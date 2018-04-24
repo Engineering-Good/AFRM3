@@ -1,6 +1,12 @@
-/* Enable one of the following lines depending on which motor driver is used */
-//#define AFRM_DRIVER_L298N
-#define AFRM_DRIVER_DRV8833
+/* values to adapt for speed control:
+ *  STUCK_SPEED_INCREMENT
+ *  SPEED_INCREMENT
+ *  MAX_PWM_BOOSTS
+ *  BOOST_PWM
+ *  MIN_PWM_UP
+ *  MIN_PWM_DOWN
+ */
+
 
 /* Enable one of the following lines depending on which encoder is used */
 //#define AFRM_USE_MOTOR_ENCODER
@@ -11,22 +17,15 @@
  */
 
 // Motor interface
-#if defined(AFRM_DRIVER_L298N)
-  const int PIN_PWM         = 11;
-  const int PIN_MOTOR_UP    = 10;
-  const int PIN_MOTOR_DOWN  = 9;
-#endif
-#if defined(AFRM_DRIVER_DRV8833)
-  const int PIN_PWM_UP      = 9;
-  const int PIN_PWM_DOWN    = 10;
-  const int PIN_SLEEP       = 11;
-#endif
+const int PIN_PWM_UP      = 9;
+const int PIN_PWM_DOWN    = 10;
+const int PIN_SLEEP       = 11;
 #if defined(AFRM_USE_MOTOR_ENCODER)
   const int PIN_ENCODER_A   = 3;
   const int PIN_ENCODER_B   = 2;
 #endif
 #if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const int PIN_REFLECTANCE = 1; // using A1 because it's used as a digital input. Use 0 for analog input.
+  const int PIN_REFLECTANCE = 1; // use A1 for digital input; 1 for analog input.
 #endif
 
 // Input signal definitions
@@ -61,8 +60,9 @@ const int INPUT_CHANGE_NO_STUCK_MILLIS = 2000; // suppress stuck check for 2s af
 #if defined(AFRM_USE_REFLECTANCE_SENSOR)
   const int STUCK_ENCODER_TOLERANCE = 0; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
 #endif
-const int MAX_PWM_BOOSTS = 2; // number of stuck-check intervals during which to apply boost PWM
+const int MAX_PWM_BOOSTS = 1; // number of stuck-check intervals during which to apply boost PWM
 const int BOOST_PWM = 150;
+const int STUCK_SPEED_INCREMENT = 20; // increase PWM by this value after a boost, to reduce the chances of becoming stuck again
 
 // Speed control
 const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
@@ -73,8 +73,9 @@ const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two 
 #if defined(AFRM_USE_REFLECTANCE_SENSOR)
   const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
 #endif
-const unsigned int SPEED_INCREMENT = 10; // adjust motor PWM in steps of 10 during speed control
-const int MIN_PWM = 50; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
+const unsigned int SPEED_INCREMENT = 5; // adjust motor PWM in steps of 5 during speed control
+const int MIN_PWM_UP = 80; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
+const int MIN_PWM_DOWN = 50;
 
 // Calibration mode
 const unsigned int CALIBRATION_PWM = 150;
@@ -145,32 +146,18 @@ void setup() {
   Serial.begin(115200);
 
   // setup digital pins; encoder pins are setup by the Encoder library
-  #if defined(AFRM_DRIVER_L298N)
-    pinMode(PIN_PWM, OUTPUT);
-    pinMode(PIN_MOTOR_UP, OUTPUT);
-    pinMode(PIN_MOTOR_DOWN, OUTPUT);
-  #endif
-  #if defined(AFRM_DRIVER_DRV8833)
-    pinMode(PIN_PWM_UP, OUTPUT);
-    pinMode(PIN_PWM_DOWN, OUTPUT);
-    pinMode(PIN_SLEEP, OUTPUT);
-  #endif
+  pinMode(PIN_PWM_UP, OUTPUT);
+  pinMode(PIN_PWM_DOWN, OUTPUT);
+  pinMode(PIN_SLEEP, OUTPUT);
   pinMode(PIN_BUTTON, INPUT_PULLUP);
   pinMode(PIN_DIR_UP, INPUT_PULLUP);
   pinMode(PIN_DIR_DOWN, INPUT_PULLUP);
   pinMode(PIN_REFLECTANCE, INPUT);
 
   // output safe states to start
-  #if defined(AFRM_DRIVER_L298N)
-    digitalWrite(PIN_PWM, LOW);
-    digitalWrite(PIN_MOTOR_UP, LOW);
-    digitalWrite(PIN_MOTOR_DOWN, LOW);
-  #endif
-  #if defined(AFRM_DRIVER_DRV8833)
-    digitalWrite(PIN_PWM_UP, LOW);
-    digitalWrite(PIN_PWM_DOWN, LOW);
-    digitalWrite(PIN_SLEEP, LOW);
-  #endif
+  digitalWrite(PIN_PWM_UP, LOW);
+  digitalWrite(PIN_PWM_DOWN, LOW);
+  digitalWrite(PIN_SLEEP, LOW);
 
   // If push button is pushed during startup, enter configuration mode
   if(digitalRead(PIN_BUTTON) == SELECTED) {
@@ -187,8 +174,8 @@ void setup() {
     calibration_mode = true;
   }
 
-  if(recommended_pwm_up < MIN_PWM) recommended_pwm_up = MIN_PWM;
-  if(recommended_pwm_down < MIN_PWM) recommended_pwm_down = MIN_PWM;
+  if(recommended_pwm_up < MIN_PWM_UP) recommended_pwm_up = MIN_PWM_UP;
+  if(recommended_pwm_down < MIN_PWM_DOWN) recommended_pwm_down = MIN_PWM_DOWN;
 }
 
 /* This function returns DIRECTION_UP, DIRECTION_DOWN or DIRECTION_NONE depending on
@@ -210,8 +197,8 @@ void debug_log() {
     if(calibration_mode) {
       Serial.println("Calibration:");
     }
-    Serial.println("INPUTS:\t\t\t\tOUTPUTS:\t\t\tTIME:");
-    Serial.println("Dir\tButton\tCounts\tPWM\tDir up\tDir dwn\t\tNow\tinputchange");
+    Serial.println("INPUTS:\t\t\tOUTPUT:\t\tTIME:");
+    Serial.println("Dir\tButton\tCounts\tPWM\t\tNow\tinputchange");
     if(direction_input() == DIRECTION_UP) {
       Serial.print("Up");
     } else if (direction_input() == DIRECTION_DOWN) {
@@ -233,15 +220,6 @@ void debug_log() {
     } else {
       Serial.print(current_pwm);
     }
-    Serial.print("\t");
-    #if defined(AFRM_DRIVER_L298N)
-      Serial.print(digitalRead(PIN_MOTOR_UP));
-      Serial.print("\t");
-      Serial.print(digitalRead(PIN_MOTOR_DOWN));
-    #endif
-    #if defined(AFRM_DRIVER_DRV8833)
-      Serial.print("N/A for DRV8833");
-    #endif
     Serial.print("\t\t");
     Serial.print(millis()%1000000);
     Serial.print("\t");
@@ -251,61 +229,33 @@ void debug_log() {
 }
 
 void stop_motor() {
-  #if defined(AFRM_DRIVER_L298N)
-    digitalWrite(PIN_MOTOR_UP, LOW);
-    digitalWrite(PIN_MOTOR_DOWN, LOW);
-    analogWrite(PIN_PWM, 0);
-  #endif
-  #if defined(AFRM_DRIVER_DRV8833)
-    digitalWrite(PIN_PWM_UP, LOW);
-    digitalWrite(PIN_PWM_DOWN, LOW);
-    digitalWrite(PIN_SLEEP, LOW);
-  #endif
+  digitalWrite(PIN_PWM_UP, LOW);
+  digitalWrite(PIN_PWM_DOWN, LOW);
+  digitalWrite(PIN_SLEEP, LOW);
 }
 
 void move_motor(int dir, unsigned int pwm) {
-  #if defined(AFRM_DRIVER_L298N)
-    if(dir == DIRECTION_UP) {
-      digitalWrite(PIN_MOTOR_UP, HIGH);
-      digitalWrite(PIN_MOTOR_DOWN, LOW);
-    } else if(dir == DIRECTION_DOWN) {
-      digitalWrite(PIN_MOTOR_UP, LOW);
-      digitalWrite(PIN_MOTOR_DOWN, HIGH);
-    } else {
-      // no defined direction -> stop motor
-      stop_motor();
-      return;
-    }
+  if(dir == DIRECTION_UP) {
+    digitalWrite(PIN_SLEEP, HIGH);
+    digitalWrite(PIN_PWM_DOWN, LOW);
     if(boost_pwm) {
-      analogWrite(PIN_PWM, BOOST_PWM);
+      analogWrite(PIN_PWM_UP, BOOST_PWM);
     } else {
-      analogWrite(PIN_PWM, max(pwm, MIN_PWM));
+      analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_UP));
     }
-  #endif
-
-  #if defined(AFRM_DRIVER_DRV8833)
-    if(dir == DIRECTION_UP) {
-      digitalWrite(PIN_SLEEP, HIGH);
-      digitalWrite(PIN_PWM_DOWN, LOW);
-      if(boost_pwm) {
-        analogWrite(PIN_PWM_UP, BOOST_PWM);
-      } else {
-        analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM));
-      }
-    } else if(dir == DIRECTION_DOWN) {
-      digitalWrite(PIN_SLEEP, HIGH);
-      digitalWrite(PIN_PWM_UP, LOW);
-      if(boost_pwm) {
-        analogWrite(PIN_PWM_DOWN, BOOST_PWM);
-      } else {
-        analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM));
-      }
+  } else if(dir == DIRECTION_DOWN) {
+    digitalWrite(PIN_SLEEP, HIGH);
+    digitalWrite(PIN_PWM_UP, LOW);
+    if(boost_pwm) {
+      analogWrite(PIN_PWM_DOWN, BOOST_PWM);
     } else {
-      // no defined direction -> stop motor
-      stop_motor();
-      return;
+      analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_DOWN));
     }
-  #endif
+  } else {
+    // no defined direction -> stop motor
+    stop_motor();
+    return;
+  }
 }
 
 void detect_input_change() {
@@ -361,6 +311,7 @@ void stuck_check() {
           boost_count++;
           last_encoder_count = encoder_count;
           is_stuck = false;
+          current_pwm += STUCK_SPEED_INCREMENT;
           Serial.print("Stuck detected -> Boost motor (");
           Serial.print(boost_count);
           Serial.print("/");
@@ -482,7 +433,7 @@ void speed_control() {
     }
     if((millis() - start_time) / 1000.0 / ANTHEM_DURATION * length_counts < abs(encoder_count) + COUNTS_TOLERANCE) { // calculated target position > actual position + tolerance
       Serial.print("Speed too high - ");
-      if(current_pwm >= MIN_PWM + SPEED_INCREMENT) {
+      if((direction_input() == DIRECTION_UP && current_pwm >= MIN_PWM_UP + SPEED_INCREMENT) or (direction_input() == DIRECTION_DOWN && current_pwm >= MIN_PWM_DOWN + SPEED_INCREMENT)) {
         current_pwm -= SPEED_INCREMENT; // decrease motor pwm
         Serial.print("Decreasing speed");
       }
@@ -561,17 +512,25 @@ void loop() {
     if(last_reflectance == 0 && reflectance_count >= (REFLECTANCE_HISTORY-REFLECTANCE_OUTLIERS)) {
       encoder_count++;
       last_reflectance = 1;
+      // encoder changed -> reset boost mode
+      is_stuck = false;
+      boost_pwm = false;
+      boost_count = 0;
     }
     // check if the sum is small enough to detect a change from 1 to 0
     if(last_reflectance == 1 && reflectance_count <= REFLECTANCE_OUTLIERS) {
       encoder_count++;
       last_reflectance = 0;
+      // encoder changed -> reset boost mode
+      is_stuck = false;
+      boost_pwm = false;
+      boost_count = 0;
     }
     reflectance_count = 0; // reset count for next round
   #endif
 
   detect_input_change();
-  
+
   if(calibration_mode) {
     // in calibration mode, run the calibration loop instead of the rest of this one
     calibration_loop();
