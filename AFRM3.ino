@@ -26,7 +26,7 @@
   const int PIN_ENCODER_B   = 2;
 #endif
 #if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const int PIN_REFLECTANCE = A0; // using A0 because it's used as a digital input. Use 0 for analog input.
+  const int PIN_REFLECTANCE = 1; // using A1 because it's used as a digital input. Use 0 for analog input.
 #endif
 
 // Input signal definitions
@@ -47,8 +47,9 @@ const int LOG_INTERVAL_MILLIS = 1000; // log every second
 
 // Encoder
 #if defined(AFRM_USE_REFLECTANCE_SENSOR)
+  const int REFLECTANCE_THRESHOLD = 600; // ~2.9V
   const byte REFLECTANCE_HISTORY = 8; // use the last 8 reflectance values to determine reflectance; max. 8 if reflectance_bits is of type byte
-  const byte REFLECTANCE_OUTLIERS = 1; // allow 1 bit in the reflectance history to be different
+  const byte REFLECTANCE_OUTLIERS = 2; // allow 1 bit in the reflectance history to be different
 #endif
 
 // Stuck-check
@@ -61,7 +62,7 @@ const int INPUT_CHANGE_NO_STUCK_MILLIS = 2000; // suppress stuck check for 2s af
   const int STUCK_ENCODER_TOLERANCE = 0; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
 #endif
 const int MAX_PWM_BOOSTS = 2; // number of stuck-check intervals during which to apply boost PWM
-const int BOOST_PWM = 255;
+const int BOOST_PWM = 150;
 
 // Speed control
 const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
@@ -73,10 +74,10 @@ const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two 
   const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
 #endif
 const unsigned int SPEED_INCREMENT = 10; // adjust motor PWM in steps of 10 during speed control
-const int MIN_PWM = 115; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
+const int MIN_PWM = 50; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
 
 // Calibration mode
-const unsigned int CALIBRATION_PWM = 255;
+const unsigned int CALIBRATION_PWM = 150;
 
 // EEPROM storage see below
 
@@ -352,7 +353,7 @@ void stuck_check() {
       Serial.println("Skipping stuck check (direction changed)");
       is_stuck = false; // skip the stuck-check to allow for motor startup
     } else {
-      if(encoder_count < (last_encoder_count + STUCK_ENCODER_TOLERANCE) && encoder_count > (last_encoder_count - STUCK_ENCODER_TOLERANCE)) {
+      if(encoder_count <= (last_encoder_count + STUCK_ENCODER_TOLERANCE) && encoder_count >= (last_encoder_count - STUCK_ENCODER_TOLERANCE)) {
         // motor is stuck
         if(boost_count < MAX_PWM_BOOSTS) {
           // see if it can be solved by higher PWM:
@@ -550,7 +551,8 @@ void loop() {
      * reading. REFLECTANCE_OUTLIERS bits are allowed to be out of line to account for noisy readings.
      */
     reflectance_bits = reflectance_bits << 1; // shift all bits to the left, freeing the rightmost bit
-    reflectance_bits += digitalRead(PIN_REFLECTANCE); // set the rightmost bit to the current reflectance
+    //reflectance_bits += digitalRead(PIN_REFLECTANCE); // set the rightmost bit to the current reflectance
+    if(analogRead(PIN_REFLECTANCE) > REFLECTANCE_THRESHOLD) reflectance_bits++;
     // calculate the sum:
     for(byte i = 0; i < REFLECTANCE_HISTORY; i++) { // walk through the bits starting from the right up to reflectance_history
       reflectance_count += (reflectance_bits & (1<<i)); // add the i'th bit of reflectance_bits to the sum
@@ -580,4 +582,4 @@ void loop() {
   
   debug_log();
 }
-
+ 
