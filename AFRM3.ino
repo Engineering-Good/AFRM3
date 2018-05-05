@@ -8,10 +8,6 @@
  */
 
 
-/* Enable one of the following lines depending on which encoder is used */
-//#define AFRM_USE_MOTOR_ENCODER
-#define AFRM_USE_REFLECTANCE_SENSOR
-
 /* Variable names in ALL_CAPS are constant configuration values that can be changed to adapt
  * the code to different hardware. They are not modified by the software at runtime.
  */
@@ -20,13 +16,7 @@
 const int PIN_PWM_UP      = 9;
 const int PIN_PWM_DOWN    = 10;
 const int PIN_SLEEP       = 11; // not connected and without effect for DRV8835
-#if defined(AFRM_USE_MOTOR_ENCODER)
-  const int PIN_ENCODER_A   = 3;
-  const int PIN_ENCODER_B   = 2;
-#endif
-#if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const int PIN_REFLECTANCE = 1; // use A1 for digital input; 1 for analog input.
-#endif
+const int PIN_REFLECTANCE = 1; // use A1 for digital input; 1 for analog input.
 
 // Input signal definitions
 const int SELECTED = LOW;   // pins are selected when they're pulled to ground by the switch
@@ -45,21 +35,14 @@ const int DIRECTION_DOWN  = 2;
 const int LOG_INTERVAL_MILLIS = 1000; // log every second
 
 // Encoder
-#if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const int REFLECTANCE_THRESHOLD = 600; // ~2.9V
-  const byte REFLECTANCE_HISTORY = 8; // use the last 8 reflectance values to determine reflectance; max. 8 if reflectance_bits is of type byte
-  const byte REFLECTANCE_OUTLIERS = 2; // allow 1 bit in the reflectance history to be different
-#endif
+const int REFLECTANCE_THRESHOLD = 600; // ~2.9V
+const byte REFLECTANCE_HISTORY = 8; // use the last 8 reflectance values to determine reflectance; max. 8 if reflectance_bits is of type byte
+const byte REFLECTANCE_OUTLIERS = 2; // allow 1 bit in the reflectance history to be different
 
 // Stuck-check
 const int STUCK_CHECK_MILLIS = 1000; // check every second whether the motor is stuck
 const int INPUT_CHANGE_NO_STUCK_MILLIS = 2000; // suppress stuck check for 2s after direction change
-#if defined(AFRM_USE_MOTOR_ENCODER)
-  const int STUCK_ENCODER_TOLERANCE = 2; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
-#endif
-#if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const int STUCK_ENCODER_TOLERANCE = 0; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
-#endif
+const int STUCK_ENCODER_TOLERANCE = 0; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
 const int MAX_PWM_BOOSTS = 1; // number of stuck-check intervals during which to apply boost PWM
 const int BOOST_PWM = 150;
 const int STUCK_SPEED_INCREMENT = 20; // increase PWM by this value after a boost, to reduce the chances of becoming stuck again
@@ -67,12 +50,7 @@ const int STUCK_SPEED_INCREMENT = 20; // increase PWM by this value after a boos
 // Speed control
 const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
 const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two seconds
-#if defined(AFRM_USE_MOTOR_ENCODER)
-  const unsigned int COUNTS_TOLERANCE = 1000; // adjust motor speed when flag position is more than 1000 counts of the intended position
-#endif
-#if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
-#endif
+const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
 const unsigned int SPEED_INCREMENT = 5; // adjust motor PWM in steps of 5 during speed control
 const int MIN_PWM_UP = 80; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
 const int MIN_PWM_DOWN = 50;
@@ -97,16 +75,9 @@ unsigned long last_log_time = 0; // last time in milliseconds when the log outpu
 // Encoder
 volatile long encoder_count = 0;
 long last_encoder_count = 0;
-#if defined(AFRM_USE_MOTOR_ENCODER)
-  #define ENCODER_DO_NOT_USE_INTERRUPTS
-  #include <Encoder.h>
-  Encoder motor_encoder(PIN_ENCODER_A, PIN_ENCODER_B);
-#endif
-#if defined(AFRM_USE_REFLECTANCE_SENSOR)
-  bool last_reflectance = LOW;
-  int reflectance_count = 0;
-  byte reflectance_bits = 0; // change data type to word for reflectance history of 16
-#endif
+bool last_reflectance = LOW;
+int reflectance_count = 0;
+byte reflectance_bits = 0; // change data type to word for reflectance history of 16
 
 // Stuck-check
 unsigned long last_stuck_check = 0;
@@ -353,9 +324,6 @@ void calibration_loop() {
       move_motor(DIRECTION_UP, CALIBRATION_PWM);
     } else {
       cal_distance_up = abs(encoder_count);
-      #if defined(AFRM_USE_MOTOR_ENCODER)
-        motor_encoder.write(0);
-      #endif
       encoder_count = 0;
       last_encoder_count = 0;
       cal_pwm_up = CALIBRATION_PWM * (millis() - cal_start_time_up) / 1000 / ANTHEM_DURATION;
@@ -378,9 +346,6 @@ void calibration_loop() {
       move_motor(DIRECTION_DOWN, CALIBRATION_PWM);
     } else {
       cal_distance_down = abs(encoder_count);
-      #if defined(AFRM_USE_MOTOR_ENCODER)
-        motor_encoder.write(0);
-      #endif
       encoder_count = 0;
       last_encoder_count = 0;
       cal_pwm_down = CALIBRATION_PWM * (millis() - cal_start_time_down) / 1000 / ANTHEM_DURATION;
@@ -455,9 +420,6 @@ void normal_loop() {
       } else {
         // prepare everything for the next run in opposite direction -> reset the encoder count
         start_time = 0;
-        #if defined(AFRM_USE_MOTOR_ENCODER)
-          motor_encoder.write(0);
-        #endif
         encoder_count = 0;
         last_encoder_count = 0;
       }
@@ -471,9 +433,6 @@ void normal_loop() {
       } else {
         // prepare everything for the next run in opposite direction -> reset the encoder count
         start_time = 0;
-        #if defined(AFRM_USE_MOTOR_ENCODER)
-          motor_encoder.write(0);
-        #endif
         encoder_count = 0;
         last_encoder_count = 0;
       }
@@ -488,46 +447,40 @@ void normal_loop() {
 }
 
 void loop() {
-  #if defined(AFRM_USE_MOTOR_ENCODER)
-    encoder_count = motor_encoder.read();
-  #endif
-
-  #if defined(AFRM_USE_REFLECTANCE_SENSOR)
-    /* Each sensor reading yields 0 or 1 depending on reflectance. A rolling history of the last
-     * sensor readings is saved as bits in reflectance_bits. Each time, the oldest bit gets shifted out
-     * to the left and the newest bit is added on the right of reflectance_bits.
-     * Then, the sum of the newest REFLECTANCE_HISTORY bits in reflectance_bits is calculated. The sum
-     * is the number of recent sensor readings that returned 1. Then we check if the sum is high enough
-     * or low enough, depending on the previous state (last_reflectance), to be considered a new valid
-     * reading. REFLECTANCE_OUTLIERS bits are allowed to be out of line to account for noisy readings.
-     */
-    reflectance_bits = reflectance_bits << 1; // shift all bits to the left, freeing the rightmost bit
-    //reflectance_bits += digitalRead(PIN_REFLECTANCE); // set the rightmost bit to the current reflectance
-    if(analogRead(PIN_REFLECTANCE) > REFLECTANCE_THRESHOLD) reflectance_bits++;
-    // calculate the sum:
-    for(byte i = 0; i < REFLECTANCE_HISTORY; i++) { // walk through the bits starting from the right up to reflectance_history
-      reflectance_count += (reflectance_bits & (1<<i)); // add the i'th bit of reflectance_bits to the sum
-    }
-    // check if the sum is big enough to detect a change from 0 to 1
-    if(last_reflectance == 0 && reflectance_count >= (REFLECTANCE_HISTORY-REFLECTANCE_OUTLIERS)) {
-      encoder_count++;
-      last_reflectance = 1;
-      // encoder changed -> reset boost mode
-      is_stuck = false;
-      boost_pwm = false;
-      boost_count = 0;
-    }
-    // check if the sum is small enough to detect a change from 1 to 0
-    if(last_reflectance == 1 && reflectance_count <= REFLECTANCE_OUTLIERS) {
-      encoder_count++;
-      last_reflectance = 0;
-      // encoder changed -> reset boost mode
-      is_stuck = false;
-      boost_pwm = false;
-      boost_count = 0;
-    }
-    reflectance_count = 0; // reset count for next round
-  #endif
+  /* Each sensor reading yields 0 or 1 depending on reflectance. A rolling history of the last
+   * sensor readings is saved as bits in reflectance_bits. Each time, the oldest bit gets shifted out
+   * to the left and the newest bit is added on the right of reflectance_bits.
+   * Then, the sum of the newest REFLECTANCE_HISTORY bits in reflectance_bits is calculated. The sum
+   * is the number of recent sensor readings that returned 1. Then we check if the sum is high enough
+   * or low enough, depending on the previous state (last_reflectance), to be considered a new valid
+   * reading. REFLECTANCE_OUTLIERS bits are allowed to be out of line to account for noisy readings.
+   */
+  reflectance_bits = reflectance_bits << 1; // shift all bits to the left, freeing the rightmost bit
+  //reflectance_bits += digitalRead(PIN_REFLECTANCE); // set the rightmost bit to the current reflectance
+  if(analogRead(PIN_REFLECTANCE) > REFLECTANCE_THRESHOLD) reflectance_bits++;
+  // calculate the sum:
+  for(byte i = 0; i < REFLECTANCE_HISTORY; i++) { // walk through the bits starting from the right up to reflectance_history
+    reflectance_count += (reflectance_bits & (1<<i)); // add the i'th bit of reflectance_bits to the sum
+  }
+  // check if the sum is big enough to detect a change from 0 to 1
+  if(last_reflectance == 0 && reflectance_count >= (REFLECTANCE_HISTORY-REFLECTANCE_OUTLIERS)) {
+    encoder_count++;
+    last_reflectance = 1;
+    // encoder changed -> reset boost mode
+    is_stuck = false;
+    boost_pwm = false;
+    boost_count = 0;
+  }
+  // check if the sum is small enough to detect a change from 1 to 0
+  if(last_reflectance == 1 && reflectance_count <= REFLECTANCE_OUTLIERS) {
+    encoder_count++;
+    last_reflectance = 0;
+    // encoder changed -> reset boost mode
+    is_stuck = false;
+    boost_pwm = false;
+    boost_count = 0;
+  }
+  reflectance_count = 0; // reset count for next round
 
   detect_input_change();
 
