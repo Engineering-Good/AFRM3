@@ -19,7 +19,7 @@
 // Motor interface
 const int PIN_PWM_UP      = 9;
 const int PIN_PWM_DOWN    = 10;
-const int PIN_SLEEP       = 11;
+const int PIN_SLEEP       = 11; // not connected and without effect for DRV8835
 #if defined(AFRM_USE_MOTOR_ENCODER)
   const int PIN_ENCODER_A   = 3;
   const int PIN_ENCODER_B   = 2;
