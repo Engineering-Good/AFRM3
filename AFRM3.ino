@@ -3,10 +3,38 @@
  *  SPEED_INCREMENT
  *  MAX_PWM_BOOSTS
  *  BOOST_PWM
- *  MIN_PWM_UP
- *  MIN_PWM_DOWN
+ *  MIN_PWM_START_UP
+ *  MIN_PWM_CONT_UP
+ *  MIN_PWM_START_DOWN
+ *  MIN_PWM_CONT_DOWN
  */
 
+/* PWM values below the motor will not start/continue rotating anymore. If this is too high,
+ * try adding a capacitor on the motor controller output to flatten the PWM 
+ */
+// Rainbow #1
+const unsigned int MIN_PWM_START_UP = 80;
+const unsigned int MIN_PWM_CONT_UP = 50;
+const unsigned int MIN_PWM_START_DOWN = 60;
+const unsigned int MIN_PWM_CONT_DOWN = 40;
+
+// Rainbow #2
+/*const unsigned int MIN_PWM_START_UP = 80;
+const unsigned int MIN_PWM_CONT_UP = 50;
+const unsigned int MIN_PWM_START_DOWN = 60;
+const unsigned int MIN_PWM_CONT_DOWN = 40;*/
+
+// CPAS #1
+/*const unsigned int MIN_PWM_START_UP = 80;
+const unsigned int MIN_PWM_CONT_UP = 50;
+const unsigned int MIN_PWM_START_DOWN = 60;
+const unsigned int MIN_PWM_CONT_DOWN = 40;*/
+
+// CPAS #2
+/*const unsigned int MIN_PWM_START_UP = 80;
+const unsigned int MIN_PWM_CONT_UP = 50;
+const unsigned int MIN_PWM_START_DOWN = 60;
+const unsigned int MIN_PWM_CONT_DOWN = 40;*/
 
 /* Variable names in ALL_CAPS are constant configuration values that can be changed to adapt
  * the code to different hardware. They are not modified by the software at runtime.
@@ -52,8 +80,7 @@ const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
 const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two seconds
 const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
 const unsigned int SPEED_INCREMENT = 5; // adjust motor PWM in steps of 5 during speed control
-const int MIN_PWM_UP = 80; // PWM value below the motor will not continue rotating anymore. If this is too high, try adding a capacitor on the motor controller output to flatten the PWM
-const int MIN_PWM_DOWN = 50;
+const unsigned int START_PWM_MILLIS = 1000; // time after an input change to use MIN_PWM_START_UP/DOWN as minimum PWM value, instead of MIN_PWM_CONT_UP/DOWN
 
 // Calibration mode
 const unsigned int CALIBRATION_PWM = 150;
@@ -145,8 +172,8 @@ void setup() {
     calibration_mode = true;
   }
 
-  if(recommended_pwm_up < MIN_PWM_UP) recommended_pwm_up = MIN_PWM_UP;
-  if(recommended_pwm_down < MIN_PWM_DOWN) recommended_pwm_down = MIN_PWM_DOWN;
+  if(recommended_pwm_up < MIN_PWM_CONT_UP) recommended_pwm_up = MIN_PWM_CONT_UP;
+  if(recommended_pwm_down < MIN_PWM_CONT_DOWN) recommended_pwm_down = MIN_PWM_CONT_DOWN;
 }
 
 /* This function returns DIRECTION_UP, DIRECTION_DOWN or DIRECTION_NONE depending on
@@ -211,16 +238,20 @@ void move_motor(int dir, unsigned int pwm) {
     digitalWrite(PIN_PWM_DOWN, LOW);
     if(boost_pwm) {
       analogWrite(PIN_PWM_UP, BOOST_PWM);
+    } else if(millis() >= last_input_change_time + START_PWM_MILLIS) {
+      analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_START_UP));
     } else {
-      analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_UP));
+      analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_CONT_UP));
     }
   } else if(dir == DIRECTION_DOWN) {
     digitalWrite(PIN_SLEEP, HIGH);
     digitalWrite(PIN_PWM_UP, LOW);
     if(boost_pwm) {
       analogWrite(PIN_PWM_DOWN, BOOST_PWM);
+    } else if(millis() >= last_input_change_time + START_PWM_MILLIS) {
+      analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_START_DOWN));
     } else {
-      analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_DOWN));
+      analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_CONT_DOWN));
     }
   } else {
     // no defined direction -> stop motor
@@ -398,7 +429,7 @@ void speed_control() {
     }
     if((millis() - start_time) / 1000.0 / ANTHEM_DURATION * length_counts < abs(encoder_count) + COUNTS_TOLERANCE) { // calculated target position > actual position + tolerance
       Serial.print("Speed too high - ");
-      if((direction_input() == DIRECTION_UP && current_pwm >= MIN_PWM_UP + SPEED_INCREMENT) or (direction_input() == DIRECTION_DOWN && current_pwm >= MIN_PWM_DOWN + SPEED_INCREMENT)) {
+      if((direction_input() == DIRECTION_UP && current_pwm >= MIN_PWM_CONT_UP + SPEED_INCREMENT) or (direction_input() == DIRECTION_DOWN && current_pwm >= MIN_PWM_CONT_DOWN + SPEED_INCREMENT)) {
         current_pwm -= SPEED_INCREMENT; // decrease motor pwm
         Serial.print("Decreasing speed");
       }
