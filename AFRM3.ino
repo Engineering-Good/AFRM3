@@ -13,28 +13,28 @@
  * try adding a capacitor on the motor controller output to flatten the PWM 
  */
 // Rainbow #1
-const unsigned int MIN_PWM_START_UP = 80;
-const unsigned int MIN_PWM_CONT_UP = 50;
-const unsigned int MIN_PWM_START_DOWN = 60;
-const unsigned int MIN_PWM_CONT_DOWN = 40;
+/*const unsigned int MIN_PWM_START_UP = 100;
+const unsigned int MIN_PWM_CONT_UP = 85;
+const unsigned int MIN_PWM_START_DOWN = 80;
+const unsigned int MIN_PWM_CONT_DOWN = 60;*/
 
 // Rainbow #2
-/*const unsigned int MIN_PWM_START_UP = 80;
-const unsigned int MIN_PWM_CONT_UP = 50;
-const unsigned int MIN_PWM_START_DOWN = 60;
-const unsigned int MIN_PWM_CONT_DOWN = 40;*/
+/*const unsigned int MIN_PWM_START_UP = 120;
+const unsigned int MIN_PWM_CONT_UP = 75;
+const unsigned int MIN_PWM_START_DOWN = 90;
+const unsigned int MIN_PWM_CONT_DOWN = 50;*/
 
-// CPAS #1
-/*const unsigned int MIN_PWM_START_UP = 80;
-const unsigned int MIN_PWM_CONT_UP = 50;
-const unsigned int MIN_PWM_START_DOWN = 60;
-const unsigned int MIN_PWM_CONT_DOWN = 40;*/
+// CPAS #1 [SWAP PINS 9 and 10]
+/*const unsigned int MIN_PWM_START_UP = 140;
+const unsigned int MIN_PWM_CONT_UP = 100;
+const unsigned int MIN_PWM_START_DOWN = 110;
+const unsigned int MIN_PWM_CONT_DOWN = 70;*/
 
-// CPAS #2
-/*const unsigned int MIN_PWM_START_UP = 80;
-const unsigned int MIN_PWM_CONT_UP = 50;
-const unsigned int MIN_PWM_START_DOWN = 60;
-const unsigned int MIN_PWM_CONT_DOWN = 40;*/
+// CPAS #2 
+const unsigned int MIN_PWM_START_UP = 160;
+const unsigned int MIN_PWM_CONT_UP = 125;
+const unsigned int MIN_PWM_START_DOWN = 110;
+const unsigned int MIN_PWM_CONT_DOWN = 75;
 
 /* Variable names in ALL_CAPS are constant configuration values that can be changed to adapt
  * the code to different hardware. They are not modified by the software at runtime.
@@ -72,15 +72,15 @@ const int STUCK_CHECK_MILLIS = 1000; // check every second whether the motor is 
 const int INPUT_CHANGE_NO_STUCK_MILLIS = 2000; // suppress stuck check for 2s after direction change
 const int STUCK_ENCODER_TOLERANCE = 0; // how much +/- the encoder value may still move when the motor is stuck (to offset some movement from boosting PWM)
 const int MAX_PWM_BOOSTS = 1; // number of stuck-check intervals during which to apply boost PWM
-const int BOOST_PWM = 150;
-const int STUCK_SPEED_INCREMENT = 20; // increase PWM by this value after a boost, to reduce the chances of becoming stuck again
+const int BOOST_PWM = 180;
+const int STUCK_SPEED_INCREMENT = 5; // increase PWM by this value after a boost, to reduce the chances of becoming stuck again
 
 // Speed control
 const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
 const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two seconds
 const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
 const unsigned int SPEED_INCREMENT = 5; // adjust motor PWM in steps of 5 during speed control
-const unsigned int START_PWM_MILLIS = 1000; // time after an input change to use MIN_PWM_START_UP/DOWN as minimum PWM value, instead of MIN_PWM_CONT_UP/DOWN
+const unsigned int START_PWM_MILLIS = 100; // time after an input change to use MIN_PWM_START_UP/DOWN as minimum PWM value, instead of MIN_PWM_CONT_UP/DOWN
 
 // Calibration mode
 const unsigned int CALIBRATION_PWM = 150;
@@ -238,7 +238,7 @@ void move_motor(int dir, unsigned int pwm) {
     digitalWrite(PIN_PWM_DOWN, LOW);
     if(boost_pwm) {
       analogWrite(PIN_PWM_UP, BOOST_PWM);
-    } else if(millis() >= last_input_change_time + START_PWM_MILLIS) {
+    } else if(millis() <= last_input_change_time + START_PWM_MILLIS) {
       analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_START_UP));
     } else {
       analogWrite(PIN_PWM_UP, max(pwm, MIN_PWM_CONT_UP));
@@ -248,7 +248,7 @@ void move_motor(int dir, unsigned int pwm) {
     digitalWrite(PIN_PWM_UP, LOW);
     if(boost_pwm) {
       analogWrite(PIN_PWM_DOWN, BOOST_PWM);
-    } else if(millis() >= last_input_change_time + START_PWM_MILLIS) {
+    } else if(millis() <= last_input_change_time + START_PWM_MILLIS) {
       analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_START_DOWN));
     } else {
       analogWrite(PIN_PWM_DOWN, max(pwm, MIN_PWM_CONT_DOWN));
