@@ -65,7 +65,7 @@ const int LOG_INTERVAL_MILLIS = 1000; // log every second
 // Encoder
 const int REFLECTANCE_THRESHOLD = 600; // ~2.9V
 const byte REFLECTANCE_HISTORY = 8; // use the last 8 reflectance values to determine reflectance; max. 8 if reflectance_bits is of type byte
-const byte REFLECTANCE_OUTLIERS = 2; // allow 1 bit in the reflectance history to be different
+const byte REFLECTANCE_OUTLIERS = 2; // allow 2 bits in the reflectance history to be different
 
 // Stuck-check
 const int STUCK_CHECK_MILLIS = 1000; // check every second whether the motor is stuck
@@ -78,7 +78,7 @@ const int STUCK_SPEED_INCREMENT = 5; // increase PWM by this value after a boost
 // Speed control
 const unsigned int ANTHEM_DURATION = 90; // duration of anthem in seconds
 const unsigned int SPEED_CONTROL_MILLIS = 2000; // adjust motor speed every two seconds
-const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts of the intended position
+const unsigned int COUNTS_TOLERANCE = 4; // adjust motor speed when flag position is more than 4 counts off the intended position
 const unsigned int SPEED_INCREMENT = 5; // adjust motor PWM in steps of 5 during speed control
 const unsigned int START_PWM_MILLIS = 100; // time after an input change to use MIN_PWM_START_UP/DOWN as minimum PWM value, instead of MIN_PWM_CONT_UP/DOWN
 
@@ -115,7 +115,7 @@ bool boost_pwm = false;
 
 // Speed control
 unsigned long length_counts = 0; // length of the flag pole in encoder counts
-unsigned int recommended_pwm_up = 0; // speed as determined during calibration
+unsigned int recommended_pwm_up = 0; // speed as determined during calibration, used as starting point for speed control
 unsigned int recommended_pwm_down = 0;
 unsigned int current_pwm = 0;
 unsigned long start_time = 0;
@@ -138,7 +138,8 @@ const int ADDRESS_LENGTH = 0; // length_counts is stored at this address
 const int ADDRESS_PWM_UP = ADDRESS_LENGTH + sizeof(length_counts); // recommended_pwm_up is stored behind length counts
 const int ADDRESS_PWM_DOWN = ADDRESS_PWM_UP + sizeof(recommended_pwm_up); // recommended_pwm_down is stored behind recommended_pwm_up
 
-
+/* This function initialises the I/O pins and reads configuration values from the EEPROM
+ */
 void setup() {
   // initialise serial communication at 9600 bits per second
   Serial.begin(115200);
@@ -189,6 +190,9 @@ int direction_input() {
   }
 }
 
+/* This function is responsible for printing debugging information on the
+ *  serial console. Open the Arduino Serial Monitor to see the output.
+ */
 void debug_log() {
   if(millis() >= last_log_time + LOG_INTERVAL_MILLIS) {
     last_log_time = millis();
@@ -226,12 +230,19 @@ void debug_log() {
   }
 }
 
+/* Stop the motor
+ */
 void stop_motor() {
   digitalWrite(PIN_PWM_UP, LOW);
   digitalWrite(PIN_PWM_DOWN, LOW);
   digitalWrite(PIN_SLEEP, LOW);
 }
 
+/* This function generates the output signals to move the motor
+ * at the desired speed upwards or downwards. If boost_pwm is true,
+ * then the BOOST_PWM is output. It also takes care of applying
+ * the minimum PWM values for start-up and continuous operation.
+ */
 void move_motor(int dir, unsigned int pwm) {
   if(dir == DIRECTION_UP) {
     digitalWrite(PIN_SLEEP, HIGH);
@@ -260,6 +271,12 @@ void move_motor(int dir, unsigned int pwm) {
   }
 }
 
+/* This function is called periodically to detect if any change happened
+ * to the direction switch or push button. This information is used in
+ * move_motor() to apply the minimum start-up PWM, to suppress the "stuck
+ * check" to allow some time for the motor to start moving, and to help
+ * with time measurement during calibration.
+ */
 void detect_input_change() {
   if(direction_input() != last_direction) {
     /* If the direction switch position changed, reset the encoder count, PWM value and boost counter.
@@ -336,7 +353,7 @@ void stuck_check() {
   }
 }
 
-/* It is assumed that calibration mode is started from the bottom up, the the flag at the lowest position.
+/* It is assumed that calibration mode is started from the bottom up, with the the flag at the lowest position.
  * To start the calibration, the direction switch is set to the UP position. The motor will move the flag
  * upwards at CALIBRATION_PWM until it reaches the top of the flag pole and is blocked there. The time and
  * the number of encoder counts it took to move the flag up are measured/counted. The time it took at
@@ -354,12 +371,13 @@ void calibration_loop() {
     if(!is_stuck) {
       move_motor(DIRECTION_UP, CALIBRATION_PWM);
     } else {
+      // motor is stuck -> probably reached end of the pole -> calculate recommended PWM for upwards
       cal_distance_up = abs(encoder_count);
-      encoder_count = 0;
+      encoder_count = 0; // reset encoder count for following downwards calibration
       last_encoder_count = 0;
       cal_pwm_up = CALIBRATION_PWM * (millis() - cal_start_time_up) / 1000 / ANTHEM_DURATION;
       if(cal_pwm_up > 255) {
-        cal_pwm_up = 255;
+        cal_pwm_up = 255; // 255 is the maximum PWM value (=full power)
         Serial.println("Recommended upwards PWM larger than 255!");
       }
       Serial.println("Upwards calibration:");
@@ -376,13 +394,14 @@ void calibration_loop() {
     if(!is_stuck) {
       move_motor(DIRECTION_DOWN, CALIBRATION_PWM);
     } else {
+      // motor is stuck -> probably reached end of the pole -> calculate recommended PWM for downwards
       cal_distance_down = abs(encoder_count);
       encoder_count = 0;
       last_encoder_count = 0;
       cal_pwm_down = CALIBRATION_PWM * (millis() - cal_start_time_down) / 1000 / ANTHEM_DURATION;
       if(cal_pwm_down > 255) {
         cal_pwm_down = 255;
-        Serial.println("Recommended downwards PWM larger than 255!");
+        Serial.println("Recommended downwards PWM larger than 255!"); // 255 is the maximum PWM value (=full power)
       }
       // store recommended up/down speeds and average distance in EEPROM
       EEPROM.put(ADDRESS_LENGTH, (cal_distance_up + cal_distance_down)/2);
@@ -415,7 +434,7 @@ void calibration_loop() {
 void speed_control() {
   if(millis() >= last_speed_control + SPEED_CONTROL_MILLIS) {
     Serial.print("Target count: ");
-    Serial.println((millis() - start_time) / 1000.0 / ANTHEM_DURATION * length_counts);
+    Serial.println((millis() - start_time) / 1000.0 / ANTHEM_DURATION * length_counts); // encoder count that we should be at, based on elapsed time, anthem duration and length of the pole
     Serial.print("Actual count + TOL: ");
     Serial.println(abs(encoder_count) + COUNTS_TOLERANCE);
     
@@ -439,6 +458,9 @@ void speed_control() {
   }
 }
 
+/* This function is called in every loop. Depending on the status of the direction switch and
+ * the push button, it makes the motor move or stop and also calls the speed control function.
+ */
 void normal_loop() {
   if(digitalRead(PIN_BUTTON) == SELECTED) {
     if(direction_input() == DIRECTION_UP) {
@@ -477,6 +499,10 @@ void normal_loop() {
   }
 }
 
+/* This is the main loop. It updates the encoder_count based on the reflectance sensor signal,
+ * detects changes to the input signals and then calls calibration_loop() or normal_loop()
+ * depending on whether calibration mode is on or not.
+ */
 void loop() {
   /* Each sensor reading yields 0 or 1 depending on reflectance. A rolling history of the last
    * sensor readings is saved as bits in reflectance_bits. Each time, the oldest bit gets shifted out
@@ -516,7 +542,7 @@ void loop() {
   detect_input_change();
 
   if(calibration_mode) {
-    // in calibration mode, run the calibration loop instead of the rest of this one
+    // in calibration mode, run the calibration loop instead of the regular one
     calibration_loop();
   } else {
     // "normal loop"
