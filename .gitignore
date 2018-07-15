@@ -1,0 +1,5 @@
+Documentation/build
+Schematics/*.pdf
+*.bak
+*.bck
+

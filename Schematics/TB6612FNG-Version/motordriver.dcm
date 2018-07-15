@@ -1,0 +1,13 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP DRV8833-Module
+D Pololu DRV8833 Dual Motor Driver Carrier
+K Pololu DRV8833 dual motor driver carrier
+$ENDCMP
+#
+$CMP L298NModule
+D L298N Dual H Bridge Motor Driver for Arduino
+K L298N motor driver
+$ENDCMP
+#
+#End Doc Library

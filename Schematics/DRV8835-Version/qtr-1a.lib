@@ -1,0 +1,19 @@
+EESchema-LIBRARY Version 2.3
+#encoding utf-8
+#
+# QTR-1A
+#
+DEF QTR-1A U 0 40 Y Y 1 F N
+F0 "U" 0 -100 60 H V C CNN
+F1 "QTR-1A" 0 0 60 H V C CNN
+F2 "" 0 0 60 H I C CNN
+F3 "" 0 0 60 H I C CNN
+DRAW
+S -200 350 200 50 0 1 0 N
+X GND ~ -400 100 200 R 50 50 1 1 P
+X OUT ~ -400 300 200 R 50 50 1 1 O
+X VIN ~ -400 200 200 R 50 50 1 1 W
+ENDDRAW
+ENDDEF
+#
+#End Library

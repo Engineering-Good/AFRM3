@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP QTR-1A
+D Pololu QTR-1A reflectance sensor
+K Pololu reflectance sensor
+$ENDCMP
+#
+#End Doc Library

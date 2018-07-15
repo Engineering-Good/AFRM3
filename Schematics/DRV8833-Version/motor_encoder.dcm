@@ -1,0 +1,8 @@
+EESchema-DOCLIB  Version 2.0
+#
+$CMP Motor_DC_Encoder
+D DC Motor with Encoder
+K DC Motor Encoder
+$ENDCMP
+#
+#End Doc Library

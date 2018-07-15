@@ -1,0 +1,45 @@
+pi*36mm/rev=113mm/rev
+10m=10000mm->89rev
+1min
+
+5kg weight: 5kg*1.8cm = 9kgcm
+
+
+Robot-r-us:
+	- 6V, 3.2A, 210rpm, 10kgcm, 36,70SGD (E): https://www.robot-r-us.com/vmchk/motor-brushed/metal-dc-geared-motor-w/encoder-6v-210rpm-10kg.cm.html
+		- 19,90USD (~26,19SGD) + shipping, https://www.dfrobot.com/product-1617.html
+		- 18,38SGD: https://www.banggood.com/6V-210RPM-Encoder-Motor-DC-Gear-Motor-with-Mounting-Bracket-and-Wheel-p-1044064.html?rmmds=category&cur_warehouse=CN
+	- 6V, 5.5A, 133rpm, 8.8kgcm, 28SGD (E): https://www.robot-r-us.com/motor-brushed/gearhead-motor-751-w/-quadrature-encoder.html
+
+banggood.com:
+	- 6V, see above
+	- 12V, 320rpm, 7.5kgcm, 27,79SGD: https://www.banggood.com/12V-320rpm12V-107rpm6V-160rpm-DC-Gear-Motor-Encoder-Motor-with-Mounting-Bracket-and-Wheel-p-1059966.html?rmmds=search&ID=522021&cur_warehouse=CN
+	
+jsumo.com: 12V, 5A, 200rpm, 15kgcm, 18USD: http://www.jsumo.com/robotus-titan-dc-gearhead-motor-12v-200-rpm-601
+
+amicus.com.sg: too weak
+
+sgbotic.com: strongest: 10kgcm: https://www.sgbotic.com/index.php?dispatch=products.view&product_id=2270
+
+sun-light.com.sg: too weak
+
+Pololu:
+	- 6V, 6.5A, 200rpm, 8.5kgcm, 37USD (E): https://www.pololu.com/product/2274
+	- 12V, 5.6A, 290rpm, 8.5kgcm, 37USD (E): https://www.pololu.com/product/3216
+	- 12V, 5A, 350rpm, 8kgcm, 40USD (E): https://www.pololu.com/product/2823
+	
+
+For 6V, 3.2A DFR motor:
+	Robot-r-us:
+		- 39,70SGD: https://robot-r-us.com/motor-controller/commotion-i2c-controlled-4-channel-motor-controller-w-encoder.html
+	Pololu:
+		- 24,95+6,24USD (32,83+8,21SGD) + shipping: VNH5019: https://www.pololu.com/product/1451
+	banggood:
+		- 22,52SGD: https://www.banggood.com/DC-3-36V-15A-Peak-30A-PWM-DC-Dual-Channel-Motor-Driver-Board-High-Power-H-Bridge-Control-Module-p-1255708.html?rmmds=search&cur_warehouse=CN
+		- 22,74SGD: https://www.banggood.com/DC-5-12V-30A-PWM-Dual-Channel-Motor-Control-Module-H-Bridge-Motor-Drive-Controller-Board-p-1255703.html?rmmds=search&cur_warehouse=CN
+
+5V power supply:
+	banggood:
+		- 5V, 5A, 5.55SGD: https://www.banggood.com/AC-DC-5V-5A-Switching-Power-Module-Bare-Circuit-Board-Built-In-Power-Supply-AC-100-240V-To-DC-5V-p-1197158.html?rmmds=search&cur_warehouse=CN
+		- 5V, 6A, 13,26SGD (+shipping): https://www.banggood.com/AC-85-265V-to-DC-5V-6A-30W-Switch-Power-Supply-for-Car-LED-Strip-Lights-p-967013.html?rmmds=search&cur_warehouse=CN
+
